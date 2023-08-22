@@ -39,15 +39,19 @@ const (
 	Info
 	Debug
 )
+
 // Logger is the log interface
 type Logger interface {
 	Log(l LogLevel, v ...interface{})
 	Logf(l LogLevel, format string, v ...interface{})
 }
-type emptyLogger struct {}
-func (*emptyLogger)Log(l LogLevel, v ...interface{}) {}
-func (*emptyLogger)Logf(l LogLevel, format string, v ...interface{}) {}
+type emptyLogger struct{}
+
+func (*emptyLogger) Log(l LogLevel, v ...interface{})                 {}
+func (*emptyLogger) Logf(l LogLevel, format string, v ...interface{}) {}
+
 var logger Logger = &emptyLogger{}
+
 // SetLogger set the logger
 func SetLogger(l Logger) {
 	logger = l
@@ -61,7 +65,7 @@ type Handler interface {
 	// OnConnect mean client connected to a server.
 	OnConnect(*Conn)
 	// OnRecv mean conn recv a packet.
-	OnRecv(*Conn, Packet)
+	OnRecv(*Conn, Packet, []byte)
 	// OnUnpackErr mean failed to unpack recved data.
 	OnUnpackErr(*Conn, []byte, error)
 	// OnClose mean conn is closed.
@@ -106,11 +110,11 @@ type Options struct {
 }
 
 // NewOpts create a new options and set some default value.
-// will panic if handler or protocol is nil.
+// will panic if handler is nil.
 // eg: opts := NewOpts().SetSendListLen(len).SetRecvBufInitSize(len)...
 func NewOpts(h Handler, p Protocol) *Options {
-	if h == nil || p == nil {
-		panic("xtcp.NewOpts: nil handler or protocol")
+	if h == nil {
+		panic("xtcp.NewOpts: nil handler")
 	}
 	return &Options{
 		Handler:        h,

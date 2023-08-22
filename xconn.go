@@ -17,8 +17,9 @@ const (
 )
 
 var (
-	errSendToClosedConn = errors.New("send to closed conn")
-	errSendListFull     = errors.New("send list full")
+	errSendToClosedConn  = errors.New("send to closed conn")
+	errSendListFull      = errors.New("send list full")
+	errSendProtocolEmpty = errors.New("protocol is nil")
 
 	bufferPool1K = &sync.Pool{
 		New: func() interface{} {
@@ -226,19 +227,24 @@ func (c *Conn) recvLoop() {
 		tempDelay = 0
 
 		for recvBuf.Len() > 0 {
-			p, pl, err := c.Opts.Protocol.Unpack(recvBuf.Bytes())
-			if err != nil {
-				c.Opts.Handler.OnUnpackErr(c, recvBuf.Bytes(), err)
-			}
-
-			if pl > 0 {
-				_ = recvBuf.Next(pl)
-			}
-
-			if p != nil {
-				c.Opts.Handler.OnRecv(c, p)
+			if c.Opts.Protocol == nil {
+				c.Opts.Handler.OnRecv(c, nil, recvBuf.Bytes())
+				recvBuf.Next(recvBuf.Len())
 			} else {
-				break
+				p, pl, err := c.Opts.Protocol.Unpack(recvBuf.Bytes())
+				if err != nil || p == nil {
+					c.Opts.Handler.OnUnpackErr(c, recvBuf.Bytes(), err)
+				}
+
+				if pl > 0 {
+					_ = recvBuf.Next(pl)
+				}
+
+				if p != nil {
+					c.Opts.Handler.OnRecv(c, p, nil)
+				} else {
+					break
+				}
 			}
 		}
 	}
@@ -353,12 +359,23 @@ func (c *Conn) SendPacket(p Packet) (int, error) {
 	if atomic.LoadInt32(&c.state) != connStateNormal {
 		return 0, errSendToClosedConn
 	}
+	if c.Opts.Protocol == nil {
+		return 0, errSendProtocolEmpty
+	}
 	buf, err := c.Opts.Protocol.Pack(p)
 	if err != nil {
 		return 0, err
 	}
 
 	return c.Send(buf)
+}
+
+// SendString use for send string data, can be call in any goroutines.
+func (c *Conn) SendString(data string) (int, error) {
+	if atomic.LoadInt32(&c.state) != connStateNormal {
+		return 0, errSendToClosedConn
+	}
+	return c.Send([]byte(data))
 }
 
 // DialAndServe connects to the addr and serve.

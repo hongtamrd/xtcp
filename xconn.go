@@ -36,6 +36,11 @@ var (
 			return make([]byte, 4<<10)
 		},
 	}
+	bufferPool64K = &sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 64<<10)
+		},
+	}
 	bufferPoolBig = &sync.Pool{}
 )
 
@@ -47,6 +52,8 @@ func getBufferFromPool(targetSize int) []byte {
 		buf = bufferPool2K.Get().([]byte)
 	} else if targetSize <= 4<<10 {
 		buf = bufferPool4K.Get().([]byte)
+	} else if targetSize <= 64<<10 {
+		buf = bufferPool64K.Get().([]byte)
 	} else {
 		itr := bufferPoolBig.Get()
 		if itr != nil {
@@ -71,6 +78,8 @@ func putBufferToPool(buf []byte) {
 		bufferPool2K.Put(buf)
 	} else if cap <= 4<<10 {
 		bufferPool4K.Put(buf)
+	} else if cap <= 64<<10 {
+		bufferPool64K.Put(buf)
 	} else {
 		bufferPoolBig.Put(buf)
 	}

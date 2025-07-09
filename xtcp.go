@@ -8,7 +8,7 @@ import (
 
 var (
 	// DefaultRecvBufSize is the default size of recv buf.
-	DefaultRecvBufSize = 4 << 10 // 4k
+	DefaultRecvBufSize = 64 << 10 // 64k
 	// DefaultSendBufListLen is the default length of send buf list.
 	DefaultSendBufListLen = 1 << 10 // 1k
 	// DefaultAsyncWrite is enable async write or not.
